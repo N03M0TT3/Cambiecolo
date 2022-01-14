@@ -23,7 +23,7 @@ def handler(sig,frame):
 key = 350
 keymain=400
 
-# Creation of our message queue
+# Creation de notre message queue
 try:
     mq = sysv_ipc.MessageQueue(key)
 except sysv_ipc.ExistentialError:
@@ -72,6 +72,6 @@ if __name__ == "__main__":
     m, _ = mq.receive(type=pid) #2
     main = (m.decode()).split()
     print("Votre main est :", main)
-
-    while sm.winner == -1:
-        
+    print(sm.getwinner())
+    while sm.getwinner() == -1:
+        pass
