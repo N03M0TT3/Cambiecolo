@@ -8,6 +8,11 @@ import signal
 class MyManager(BaseManager): pass
 
 
+# KEYS
+key = 350
+keymain=400
+
+
 def bell(pid):
     sm.bell.acquire_bell()
     if main.count(main[0]) == len(main):
@@ -32,9 +37,6 @@ def see_all_offers(offers):
         print("Player", player, "proposes", len(offers.get(player)), "cards")
         print("---------")
 
-
-key = 350
-keymain=400
 
 # Creation of our message queue
 try:
