@@ -15,15 +15,28 @@ def bell(pid):
         print("Vous avez gagner")
     sm.bell.release_bell()
 
+
 def handler(sig,frame):
     if sig==signal.SIGUSR2:
         sys.exit(1)
 
 
+def print_deck(pid, current_cards):
+        print("Player n° :", pid)
+        for card in current_cards:
+            print("--> ", card)
+
+
+def see_all_offers(offers):
+    for player in offers.keys():
+        print("Player", player, "proposes", len(offers.get(player)), "cards")
+        print("---------")
+
+
 key = 350
 keymain=400
 
-# Creation de notre message queue
+# Creation of our message queue
 try:
     mq = sysv_ipc.MessageQueue(key)
 except sysv_ipc.ExistentialError:
@@ -44,7 +57,7 @@ if __name__ == "__main__":
     
     while True:
         connection = str(input("Voulez vous jouer ? (oui/non)"))
-        if connection.lower() == "oui":
+        if connection.lower() == "oui" or connection == "":
             print("Connection en cours...")
             break
         elif connection.lower() == "non":
@@ -71,7 +84,29 @@ if __name__ == "__main__":
     #Obtention de la main du client
     m, _ = mq.receive(type=pid) #2
     main = (m.decode()).split()
-    print("Votre main est :", main)
-    print(sm.getwinner())
-    while sm.getwinner() == -1:
-        pass
+    print_deck(pid, main)
+
+    print(sm.get_offers())
+
+    sm.add_offer(pid, ["Vélo", "Vélo"])
+
+    print(sm.get_offers())
+
+    sm.del_offer(pid)
+
+    print(sm.get_offers())
+
+    # while sm.getwinner() == -1:
+        
+    #     try:
+    #         msg, t = mq.receive(10+pid)
+    #     except sysv_ipc.BusyError:
+    #         pass
+    #     finally:
+    #         print("ok")
+
+
+            
+
+
+

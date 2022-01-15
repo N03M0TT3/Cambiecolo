@@ -42,15 +42,13 @@ if __name__ == "__main__":
     m.connect()
     sm = m.sm() #sm equivaut a remote
 
-    print(sm.getwinner())
-    sm.setwinner(5)
-    
+
     n = int(input("Combien de joueurs voulez vous dans cette partie ? (3-5)\n"))
     while n > 4:
         n = int(input('Attention! Le nombre maximum de joueur est de 5!\nEntrez le nombre de joueurs :\n'))
     deck_cards = deck(n) #toutes les cartes du jeu
     mains_i = {} #La main de tous les joueurs
-
+    
 
     i = 0
     k = 0
