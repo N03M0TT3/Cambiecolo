@@ -86,15 +86,12 @@ if __name__ == "__main__":
     main = (m.decode()).split()
     print_deck(pid, main)
 
-    print(sm.get_offers())
-
     sm.add_offer(pid, ["Vélo", "Vélo"])
 
-    print(sm.get_offers())
+    see_all_offers(sm.get_offers())
 
     sm.del_offer(pid)
 
-    print(sm.get_offers())
 
     # while sm.getwinner() == -1:
         
