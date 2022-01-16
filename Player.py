@@ -38,6 +38,16 @@ def choose_cards(current_cards):
         i += 1
         print(i, " -> ", card)
 
+    put = input("Entrez les numéros des cartes à échanger séparés par un point virgule (;) :\n")
+
+    for num in put.split(';'):
+        print("La carte", int(num), "(", current_cards[int(num)-1], ") va être envoyée")
+        valid = input("Est-ce que vous validez ? (O/n)")
+        if valid == 'O' or valid == '':
+            print("C'est validé")
+        else:
+            print("Offre annulée")
+
 
 def see_all_offers(offers):
     for player in offers.keys():
