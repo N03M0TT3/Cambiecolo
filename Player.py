@@ -95,14 +95,26 @@ if __name__ == "__main__":
     sm.del_offer(pid)
 
 
-    # while sm.getwinner() == -1:
+
+    while sm.getwinner() == -1:
         
-    #     try:
-    #         msg, t = mq.receive(10+pid)
-    #     except sysv_ipc.BusyError:
-    #         pass
-    #     finally:
-    #         print("ok")
+        try:
+            msg, t = mq.receive(block=False, type=pid+10)
+        except sysv_ipc.BusyError:
+            pass
+        finally:
+            print("You have no offers")
+
+        put = input("Afficher vos cartes (C)\nAfficher les offres (O)\nProposer une offre (P)\nQue voulez-vous faire ?")
+
+        if put == 'C':
+            print('C')
+        elif put == 'O':
+            print('O')
+        elif put == 'P':
+            print('P')
+        else:
+            print("Cette action n'est pas disponible")
 
 
             
