@@ -108,13 +108,15 @@ if __name__ == "__main__":
         put = input("Afficher vos cartes (C)\nAfficher les offres (O)\nProposer une offre (P)\nQue voulez-vous faire ?")
 
         if put == 'C':
-            print('C')
+            print_deck(pid, main)
         elif put == 'O':
-            print('O')
+            see_all_offers(sm.get_offers())
         elif put == 'P':
             print('P')
         else:
             print("Cette action n'est pas disponible")
+
+        
 
 
             
