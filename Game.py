@@ -18,6 +18,7 @@ keymain=400
 def handler(sig, frame):
     if sig == signal.SIGINT:
         mq.remove()
+        sm.del_all_offers()
         sys.exit(0)
     if sig == signal.SIGUSR1:
         for pid in mains_i.keys():

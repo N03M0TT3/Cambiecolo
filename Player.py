@@ -33,25 +33,33 @@ def print_deck(pid, current_cards):
             
 
 def choose_cards(current_cards):
+    # Display cards
     i = 0
     for card in current_cards:
         i += 1
         print(i, " -> ", card)
 
+    # User input
     put = input("Entrez les numéros des cartes à échanger séparés par un point virgule (;) :\n")
+
+    cards = []
 
     for num in put.split(';'):
         print("La carte", int(num), "(", current_cards[int(num)-1], ") va être envoyée")
-        valid = input("Est-ce que vous validez ? (O/n)")
-        if valid == 'O' or valid == '':
-            print("C'est validé")
-        else:
-            print("Offre annulée")
+        cards.append(current_cards[int(num)-1])
+    
+    valid = input("Est-ce que vous validez ? (O/n)")
+    if valid == 'O' or valid == '':
+        print("C'est validé")
+        sm.add_offer(pid, cards)
+    else:
+        print("Offre annulée")
 
 
 def see_all_offers(offers):
+    print("\nOFFRES :")
     for player in offers.keys():
-        print("Player", player, "proposes", len(offers.get(player)), "cards")
+        print("Player", player, "propose", len(offers.get(player)), "cartes")
         print("---------")
 
 
@@ -104,12 +112,6 @@ if __name__ == "__main__":
     m, _ = mq.receive(type=pid) #2
     main = (m.decode()).split()
     print_deck(pid, main)
-
-    sm.add_offer(pid, ["Vélo", "Vélo"])
-
-    see_all_offers(sm.get_offers())
-
-    sm.del_offer(pid)
 
 
 
