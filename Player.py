@@ -30,6 +30,13 @@ def print_deck(pid, current_cards):
         print("Player n° :", pid)
         for card in current_cards:
             print("--> ", card)
+            
+
+def choose_cards(current_cards):
+    i = 0
+    for card in current_cards:
+        i += 1
+        print(i, " -> ", card)
 
 
 def see_all_offers(offers):
@@ -58,7 +65,7 @@ if __name__ == "__main__":
     pid = os.getpid()
     
     while True:
-        connection = str(input("Voulez vous jouer ? (oui/non)"))
+        connection = str(input("Voulez vous jouer ? (oui/non) "))
         if connection.lower() == "oui" or connection == "":
             print("Connection en cours...")
             break
@@ -103,16 +110,19 @@ if __name__ == "__main__":
         except sysv_ipc.BusyError:
             pass
         finally:
-            print("You have no offers")
+            print("\nYou have no offers")
 
-        put = input("Afficher vos cartes (C)\nAfficher les offres (O)\nProposer une offre (P)\nQue voulez-vous faire ?")
+        put = input("Que voulez-vous faire ?\nAfficher vos cartes (C)\nAfficher les offres (O)\nProposer une offre (P)\nVérifier vos offres (V)\n")
 
         if put == 'C':
             print_deck(pid, main)
         elif put == 'O':
             see_all_offers(sm.get_offers())
         elif put == 'P':
-            print('P')
+            print("\nChoose cards to offer :")
+            choose_cards(main)
+        elif put == 'V':
+            pass
         else:
             print("Cette action n'est pas disponible")
 
