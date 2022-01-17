@@ -15,7 +15,7 @@ keymain=400
 
 def bell(pid):
     sm.bell.acquire_bell()
-    if main.count(main[0]) == len(main):
+    if cards.count(cards[0]) == 5 :
         os.kill(ppid,signal.SIGUSR1)
         print("Vous avez gagner")
     sm.bell.release_bell()
@@ -45,7 +45,7 @@ def choose_cards(current_cards):
     cards = []
 
     for num in put.split(';'):
-        print("La carte", int(num), "(", current_cards[int(num)-1], ") va être envoyée")
+        print("La carte", int(num), "(", current_cards[int(num)-1], ") a été sélectionnée")
         cards.append(current_cards[int(num)-1])
     
     valid = input("Est-ce que vous validez ? (O/n)")
@@ -56,10 +56,11 @@ def choose_cards(current_cards):
         print("Offre annulée")
 
 
-def accept_offer(offers):
+def accept_offer(offers, pid, cards):
     see_all_offers(offers)
-    offre = int(input("Entrez le numéro de l'offre que vous souhaitez accepter"))
-    print("Il faut que vous échangiez", offers.get(offers.keys()[offre - 1]) , "cartes. Lesquels ?")
+    offre = int(input("\nEntrez le numéro de l'offre que vous souhaitez accepter : "))
+    print("Il faut que vous échangiez", len(offers.get(list(offers.keys())[offre - 1])) , "cartes. Lesquels ?")
+    choose_cards(cards)
 
 
 
@@ -119,8 +120,8 @@ if __name__ == "__main__":
 
     #Obtention de la main du client
     m, _ = mq.receive(type=pid) #2
-    main = (m.decode()).split()
-    print_deck(pid, main)
+    cards = (m.decode()).split()
+    print_deck(pid, cards)
 
 
 
@@ -138,17 +139,17 @@ if __name__ == "__main__":
         Afficher les offres (O)
         Proposer une offre (P)
         Accepter une offre (A)
-        Vérifier vos offres (V)""")
+        Vérifier vos offres (V)\n""")
 
         if put == 'C':
-            print_deck(pid, main)
+            print_deck(pid, cards)
         elif put == 'O':
             see_all_offers(sm.get_offers())
         elif put == 'P':
             print("\nChoose cards to offer :")
-            choose_cards(main)
+            choose_cards(cards)
         elif put == 'A':
-            accept_offer(sm.get_offers())
+            accept_offer(sm.get_offers(), pid, cards)
         elif put == 'V':
             pass
         else:
