@@ -48,19 +48,31 @@ def choose_cards(current_cards):
         print("La carte", int(num), "(", current_cards[int(num)-1], ") a été sélectionnée")
         cards.append(current_cards[int(num)-1])
     
-    valid = input("Est-ce que vous validez ? (O/n)")
-    if valid == 'O' or valid == '':
-        print("C'est validé")
-        sm.add_offer(pid, cards)
-    else:
-        print("Offre annulée")
+    put = input("Est-ce que vous validez ? (O/n) ")
+    if put == '' or put == 'O' :
+        valid = True
+    else :
+        valid = False
+
+    return valid, cards
+    
 
 
 def accept_offer(offers, pid, cards):
+    # Affichage des offres disponible, numérotées de 1 à n max
     see_all_offers(offers)
+
     offre = int(input("\nEntrez le numéro de l'offre que vous souhaitez accepter : "))
     print("Il faut que vous échangiez", len(offers.get(list(offers.keys())[offre - 1])) , "cartes. Lesquels ?")
-    choose_cards(cards)
+
+    res = choose_cards(cards)
+
+    if res[0]:
+        print("ici")
+    else:
+        p = input("Voulez-vous sortir de l'acceptation d'offre ? (O/n) ")
+        if p == 'n':
+            accept_offer(offers, pid, cards)
 
 
 
@@ -143,15 +155,26 @@ if __name__ == "__main__":
 
         if put == 'C':
             print_deck(pid, cards)
+
         elif put == 'O':
             see_all_offers(sm.get_offers())
+
         elif put == 'P':
             print("\nChoose cards to offer :")
-            choose_cards(cards)
+            # Returne un boolean True si le Player confirme son choix, et les cartes sélectionnées
+            res = choose_cards(cards)  
+            if res[0] :
+                print("C'est validé")
+                sm.add_offer(pid, res[1])
+            else:
+                print("Offre annulée")
+            
         elif put == 'A':
             accept_offer(sm.get_offers(), pid, cards)
+
         elif put == 'V':
             pass
+
         else:
             print("Cette action n'est pas disponible")
 
