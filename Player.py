@@ -56,10 +56,19 @@ def choose_cards(current_cards):
         print("Offre annulée")
 
 
+def accept_offer(offers):
+    see_all_offers(offers)
+    offre = int(input("Entrez le numéro de l'offre que vous souhaitez accepter"))
+    print("Il faut que vous échangiez", offers.get(offers.keys()[offre - 1]) , "cartes. Lesquels ?")
+
+
+
 def see_all_offers(offers):
     print("\nOFFRES :")
+    i = 0
     for player in offers.keys():
-        print("Player", player, "propose", len(offers.get(player)), "cartes")
+        i += 1
+        print(i, "--> Player", player, "propose", len(offers.get(player)), "cartes")
         print("---------")
 
 
@@ -124,7 +133,12 @@ if __name__ == "__main__":
         finally:
             print("\nYou have no offers")
 
-        put = input("Que voulez-vous faire ?\nAfficher vos cartes (C)\nAfficher les offres (O)\nProposer une offre (P)\nVérifier vos offres (V)\n")
+        put = input("""Que voulez-vous faire ?\n
+        Afficher vos cartes (C)
+        Afficher les offres (O)
+        Proposer une offre (P)
+        Accepter une offre (A)
+        Vérifier vos offres (V)""")
 
         if put == 'C':
             print_deck(pid, main)
@@ -133,6 +147,8 @@ if __name__ == "__main__":
         elif put == 'P':
             print("\nChoose cards to offer :")
             choose_cards(main)
+        elif put == 'A':
+            accept_offer(sm.get_offers())
         elif put == 'V':
             pass
         else:

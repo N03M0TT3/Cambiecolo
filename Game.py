@@ -116,6 +116,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGUSR1, handler)
     signal.signal(signal.SIGINT, handler)
     signal.pause()
+    
 #Fermer les msgs queues
 #Continuer la partie
 #Faire dict de scores
