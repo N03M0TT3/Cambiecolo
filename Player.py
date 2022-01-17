@@ -70,15 +70,22 @@ def accept_offer(offers, pid, cards):
     res = choose_cards(cards)
 
     if len(res[1]) != nb_cards:
-        print("Vous avez sélectionné un nombre incorrect de cartes !")
+        print("\nVous avez sélectionné un nombre incorrect de cartes !\nRecommencez en sélectionant", nb_cards, "cartes :")
         res = choose_cards(cards)
 
     if res[0]:  # La sélection du Player est validée
-        sm.add_offer(pid_offre + 1, res[1])
-        print("Les cartes", res[1], "ont été envoyées")
+        sm.add_offer(-pid_offre, res[1])
+        print("\nLes cartes", res[1], "ont été envoyées")
 
         new_cards = offers.get(pid_offre)
-        print("Les cartes", new_cards, " ont été réceptionnées")
+        print("Les cartes", new_cards, " ont été réceptionnées\n")
+
+        for i in range(nb_cards):
+            cards.pop(cards.index(res[1][i]))
+            cards.append(new_cards[i])
+
+        print("Vos cartes sont maintenant :")
+        print_deck(pid, cards)
     else:
         p = input("Voulez-vous sortir de l'acceptation d'offre ? (O/n) ")
         if p == 'n':
@@ -90,9 +97,10 @@ def see_all_offers(offers):
     print("\nOFFRES :")
     i = 0
     for player in offers.keys():
-        i += 1
-        print(i, "--> Player", player, "propose", len(offers.get(player)), "cartes")
-        print("---------")
+        if player >= 0:  # Will not print responses to offers
+            i += 1
+            print(i, "--> Player", player, "propose", len(offers.get(player)), "cartes")
+            print("---------")
 
 
 # Creation of our message queue
@@ -149,13 +157,28 @@ if __name__ == "__main__":
 
     while sm.getwinner() == -1:
         
-        try:
-            msg, t = mq.receive(block=False, type=pid+10)
-        except sysv_ipc.BusyError:
-            pass
-        finally:
-            print("\nYou have no offers")
+        # try:
+        #     msg, t = mq.receive(block=False, type=pid+10)
+        # except sysv_ipc.BusyError:
+        #     pass
+        # finally:
+        #     print("\nYou have no offers")
 
+        if sm.get_offers().get(-pid) != None:
+            sent = sm.get_offers().get(pid)
+            received = sm.get_offers().get(-pid)
+
+            for i in range(len(sent)):
+                cards.pop(cards.index(sent[i]))
+                cards.append(received[i])
+
+            sm.del_offer(pid)
+            sm.del_offer(-pid)
+
+            print("Transaction terminée, voici vos cartes :")
+            print_deck(pid, cards)
+
+        print("******************")
         put = input("""Que voulez-vous faire ?\n
         Afficher vos cartes (C)
         Afficher les offres (O)

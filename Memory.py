@@ -23,6 +23,7 @@ class MyRemoteClass: #Gestion memoire partagee
     def del_offer(self, pid):
         self.offres.pop(pid, None)
 
+
     def del_all_offers(self):
         self.offres.clear()
 
