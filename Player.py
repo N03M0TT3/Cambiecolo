@@ -57,18 +57,28 @@ def choose_cards(current_cards):
     return valid, cards
     
 
-
 def accept_offer(offers, pid, cards):
     # Affichage des offres disponible, numérotées de 1 à n max
     see_all_offers(offers)
 
     offre = int(input("\nEntrez le numéro de l'offre que vous souhaitez accepter : "))
-    print("Il faut que vous échangiez", len(offers.get(list(offers.keys())[offre - 1])) , "cartes. Lesquels ?")
+    pid_offre = list(offers.keys())[offre - 1]
+    nb_cards = len(offers.get(pid_offre))
+
+    print("Il faut que vous échangiez", nb_cards , "cartes. Lesquels ?")
 
     res = choose_cards(cards)
 
-    if res[0]:
-        print("ici")
+    if len(res[1]) != nb_cards:
+        print("Vous avez sélectionné un nombre incorrect de cartes !")
+        res = choose_cards(cards)
+
+    if res[0]:  # La sélection du Player est validée
+        sm.add_offer(pid_offre + 1, res[1])
+        print("Les cartes", res[1], "ont été envoyées")
+
+        new_cards = offers.get(pid_offre)
+        print("Les cartes", new_cards, " ont été réceptionnées")
     else:
         p = input("Voulez-vous sortir de l'acceptation d'offre ? (O/n) ")
         if p == 'n':
