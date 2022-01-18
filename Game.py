@@ -19,12 +19,16 @@ def handler(sig, frame):
     if sig == signal.SIGINT:
         mq.remove()
         sm.del_all_offers()
+        sm.set_winner(-1)
         sys.exit(0)
+
     if sig == signal.SIGUSR1:
         for pid in mains_i.keys():
             os.kill(pid, signal.SIGUSR2)
-        print("La partie est finie")
-    sys.exit(1)
+        print("La partie est finie ! Le joueur", sm.get_winner() , "a gagné !")
+        sm.del_all_offers()
+        sm.set_winner(-1)
+        sys.exit(1)
 
 
 def deck(n):
