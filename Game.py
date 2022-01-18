@@ -73,9 +73,18 @@ if __name__ == "__main__":
     mq = sysv_ipc.MessageQueue(key, sysv_ipc.IPC_CREAT)
 
 
-    n = int(input("Combien de joueurs voulez vous dans cette partie ? (3-5)\n"))
-    while n > 4:
-        n = int(input('Attention! Le nombre maximum de joueur est de 5!\nEntrez le nombre de joueurs :\n'))
+    n = input("Combien de joueurs voulez vous dans cette partie ? (3-5)\n")
+    valid = False
+    while not valid:
+        try:
+            n = int(n)
+            while not (3 <= n <= 5):
+                n = int(input("Entrez un entier entre 3 et 5"))
+            valid 
+        except ValueError:
+            n = input("Entrez un entier entre 3 et 5")
+    
+    
     
     # Liste de toutes les cartes du jeu, mélangées
     deck_cards = deck(n) #toutes les cartes du jeu
