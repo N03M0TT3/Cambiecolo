@@ -79,10 +79,10 @@ if __name__ == "__main__":
         try:
             n = int(n)
             while not (3 <= n <= 5):
-                n = int(input("Entrez un entier entre 3 et 5"))
-            valid 
+                n = int(input("Entrez un entier entre 3 et 5 : "))
+            valid = True
         except ValueError:
-            n = input("Entrez un entier entre 3 et 5")
+            n = input("Entrez un entier entre 3 et 5 : ")
     
     
     

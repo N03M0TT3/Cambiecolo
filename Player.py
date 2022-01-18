@@ -41,28 +41,72 @@ def choose_cards(current_cards):
         print(i, " -> ", card)
 
     # User input
-    put = input("Entrez les numéros des cartes à échanger séparés par un point virgule (;) :\n")
+    valid = False
+
+    while not valid:
+
+        put = input("Entrez les numéros des cartes à échanger séparés par un point virgule (;) :\n")
+        nums = put.split(';')
+
+        valid = True
+        for num in nums:
+            if len(num) != 1:
+                print("\nLes numéros doivent être séparés par des virgules et sont compris entre 1 et 4")
+                valid = False
+            else:
+                try:
+                    n = int(num)
+                    if n > 5:
+                        print("\nVous n'avez que 5 cartes")
+                        valid = False
+                except ValueError:
+                    print("\nLes numéros sont des entiers entre 1 et 4")
+                    valid = False
+
+
+    print()
 
     cards = []
 
-    for num in put.split(';'):
+    for num in nums:
         print("La carte", int(num), "(", current_cards[int(num)-1], ") a été sélectionnée")
         cards.append(current_cards[int(num)-1])
     
-    put = input("Est-ce que vous validez ? (O/n) ")
-    if put == '' or put == 'O' :
-        valid = True
-    else :
-        valid = False
+    while True:
+
+        put = input("Est-ce que vous validez ? (O/n) ")
+
+        if put == '' or put == 'O' :
+            valid = True
+            break
+        elif put == 'n':
+            valid = False
+        else:
+            print("Saisie invalide")
 
     return valid, cards
     
 
 def accept_offer(offers, pid, cards):
+    temp = sm.get_offers().get(pid)
+    sm.del_offer(pid)
+
     # Affichage des offres disponible, numérotées de 1 à n max
     see_all_offers(offers, pid)
 
-    offre = int(input("\nEntrez le numéro de l'offre que vous souhaitez accepter : "))
+    valid = False
+    while not valid:
+        try:
+            offre = int(input("\nEntrez le numéro de l'offre que vous souhaitez accepter : "))
+            if offre < 1:
+                print("Les numéros des offres commencent à 1")
+            elif offre > len(offers):
+                print("Ceci est trop grand")
+            else:
+                valid = True
+        except ValueError:
+            pass
+
     pid_offre = list(offers.keys())[offre - 1]
     nb_cards = len(offers.get(pid_offre))
 
@@ -70,16 +114,17 @@ def accept_offer(offers, pid, cards):
 
     res = choose_cards(cards)
 
-    if len(res[1]) != nb_cards:
-        print("\nVous avez sélectionné un nombre incorrect de cartes !\nRecommencez en sélectionant", nb_cards, "cartes :")
-        res = choose_cards(cards)
+    nb_valid = False
+    while not nb_valid:
+        if len(res[1]) != nb_cards:
+            print("\nVous avez sélectionné un nombre incorrect de cartes !\nRecommencez en sélectionant", nb_cards, "cartes : ")
+            res = choose_cards(cards)
+        else:
+            nb_valid = True
 
     if res[0]:  # La sélection du Player est validée
         sm.add_offer(-pid_offre, res[1])
         print("\nLes cartes", res[1], "ont été envoyées")
-
-        # Les cartes échangées ont peut être été proposées avant, il ne faut donc pas que cette proposition reste
-        sm.del_offer(pid)
 
         new_cards = offers.get(pid_offre)
         print("Les cartes", new_cards, " ont été réceptionnées\n")
@@ -91,9 +136,16 @@ def accept_offer(offers, pid, cards):
         print("Vos cartes sont maintenant :")
         # Le deck est imprimé au début du while suivant
     else:
-        p = input("Voulez-vous sortir de l'acceptation d'offre ? (O/n) ")
-        if p == 'n':
-            accept_offer(offers, pid, cards)
+        while True:
+            p = input("Voulez-vous sortir de l'acceptation d'offre ? (o/N) ")
+            if p.lower() == 'n' or p == '':
+                accept_offer(offers, pid, cards)
+            elif p == 'o':
+                # On réinstaure l'offre d'avant
+                sm.add_offer(pid, temp)
+                break
+            else:
+                print("Saisie invalide")
 
 
 
@@ -127,14 +179,13 @@ if __name__ == "__main__":
     pid = os.getpid()
     
     while True:
-        connection = str(input("Voulez vous jouer ? (oui/non) "))
-        if connection.lower() == "oui" or connection == "":
+        connection = input("Voulez vous jouer ? (O/n) ")
+        if connection.lower() == "O" or connection == "":
             print("Connection en cours...")
             break
-        elif connection.lower() == "non":
+        elif connection.lower() == "n":
             print("Au revoir.")
             sys.exit(1)
-        #self.winner ou dans le dic offre?
         else:
             print("Saisie incorrecte veuillez reessayer")
     
@@ -206,10 +257,10 @@ if __name__ == "__main__":
             # Returne un boolean True si le Player confirme son choix, et les cartes sélectionnées
             res = choose_cards(cards)  
             if res[0] :
-                print("C'est validé")
+                print("\n==> C'est validé\n")
                 sm.add_offer(pid, res[1])
             else:
-                print("Offre annulée")
+                print("\n==> Offre annulée...\n")
             
         elif put == 'A':
             accept_offer(sm.get_offers(), pid, cards)
