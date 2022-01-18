@@ -10,7 +10,6 @@ class MyManager(BaseManager): pass
 
 # KEYS
 key = 350
-keymain=400
 
 
 def bell(pid):
@@ -158,6 +157,7 @@ if __name__ == "__main__":
     cards = (m.decode()).split()
     # print_deck(pid, cards)
 
+    print()
     print("DEBUT DU JEU")
 
 
