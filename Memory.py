@@ -8,9 +8,13 @@ class MyRemoteClass: #Gestion memoire partagee
         self.disponible = {}
         self.offres = {}
         self.lock = Lock()
-        self.bell = Lock()
         self.winner = -1
 
+    def get_disp(self):
+        return self.disponible()
+
+    def set_disp(self,bool, key):
+        self.disponible[key]=bool
 
     def get_offers(self):
         return self.offres
@@ -32,16 +36,8 @@ class MyRemoteClass: #Gestion memoire partagee
         self.lock.acquire()
 
 
-    def acquire_bell(self):
-        self.bell.acquire()
-
-
     def release_lock(self):
         self.lock.release()
-
-
-    def release_bell(self):
-        self.bell.release()
 
 
     def get_winner(self):

@@ -12,7 +12,7 @@ class MyManager(BaseManager): pass
 
 #KEYS
 key = 350
-keycards=400
+
 
 # Handles signals
 def handler(sig, frame):
@@ -20,8 +20,10 @@ def handler(sig, frame):
     if sig == signal.SIGINT:
         # On supprime la message queue et on réinitialise la mémoire partagée
         mq.remove()
+        sm.acquire_lock()
         sm.del_all_offers()
         sm.set_winner(-1)
+        sm.release_lock()
 
         sys.exit(0)
 
@@ -34,8 +36,10 @@ def handler(sig, frame):
 
         # On supprime la message queue et on réinitialise la mémoire partagée
         mq.remove()
+        sm.acquire_lock()
         sm.del_all_offers()
         sm.set_winner(-1)
+        sm.release_lock()
 
         sys.exit(1)
 
@@ -129,6 +133,7 @@ if __name__ == "__cards__":
         cards = deck_cards[k:k + 5]
         # Ajout de la liste de cartes au dictionnaire avec comme key le pid du Player
         cards_all[pid] = cards 
+        sm.set_disp(True,pid)
 
 
         msg = f"Bienvenue user {pid} ! Vous etes connecter a la partie, veuillez patienter dans la salle d'attente..."
@@ -156,4 +161,3 @@ if __name__ == "__cards__":
     signal.signal(signal.SIGUSR1, handler)
     signal.signal(signal.SIGINT, handler)
     signal.pause()
-    
