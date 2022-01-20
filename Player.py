@@ -14,23 +14,30 @@ key = 350
 # Vérification des conditions de victoire et envoie du signal au process Game.py
 def bell(pid):
     if cards.count(cards[0]) == 5 : # Si la carte 0 est présente 5 fois dans les cartes du joueur, il a gagné
-        sm.acquire_lock()  # on block l'accés à la cloche grace à un mutex
+
+        sm.acquire_lock()  # on block l'accès à la cloche grâce à un mutex
         # On écrit son pid dans la mémoire partagée
         sm.set_winner(pid)
+        sm.add_point(pid, cards[0])
         sm.release_lock()  # Releases Lock on bell
+
         # On envoie le signal SUGUSR1 au processus Game.py
         os.kill(pid_game, signal.SIGUSR1)
         print("Vous avez gagné ! Félicitations !")
     else:
-        print("Vous n'avez pas les memes cartes, ne trichez pas!")
+        print("Vous n'avez pas les mêmes cartes, attention !")
 
-    
+
 
 
 # Handles signals
 def handler(sig, frame):
     if sig == signal.SIGUSR2 and sm.get_winner() != None:
-        print("Le joueur", sm.get_winner() , "a gagné !")
+        print("Le joueur", sm.get_winner() , "a gagné cette partie !")
+        sys.exit(1)
+
+    if sig == signal.SIGINT:
+        print("La partie est terminée")
         sys.exit(1)
 
 
@@ -105,9 +112,9 @@ def choose_cards(current_cards):
     
 
 def accept_offer(offers, pid, cards):
+    sm.acquire_lock()
     # On stocke temporairement les cartes de l'offre
     temp = sm.get_offers().get(pid)
-    sm.acquire_lock()
     sm.del_offer(pid)
     sm.release_lock()
 
@@ -152,10 +159,12 @@ def accept_offer(offers, pid, cards):
 
 
     if res[0]:  # La sélection du Player est validée
+        
         # On rajoute une offre avec comme clé la valeur opposée de la clé de l'offre acceptée et comme valeur les cartes choisies pour être échangées
         sm.acquire_lock()
         sm.add_offer(-pid_offre, res[1])
         sm.release_lock()
+
         print("\nLes cartes", res[1], "ont été envoyées")
 
         # On récupère de la mémoire les cartes de l'autre Player
@@ -177,8 +186,8 @@ def accept_offer(offers, pid, cards):
             if p.capitalize() == 'N' or p == '':
                 accept_offer(offers, pid, cards)
             elif p.lower() == 'o':
-                # On réinstaure l'offre d'avant
                 sm.acquire_lock()
+                # On réinstaure l'offre d'avant
                 sm.add_offer(pid, temp)
                 sm.release_lock()
                 break
@@ -202,7 +211,7 @@ def see_all_offers(offers, pid):
                 print("---------")
 
 
-# MAIN
+
 if __name__ == "__main__":
 
     # Connection à la message queue
@@ -214,12 +223,18 @@ if __name__ == "__main__":
 
 
     signal.signal(signal.SIGUSR2, handler)
+    signal.signal(signal.SIGINT, handler)
 
     # Connection à la mémoire partagée
-    MyManager.register('sm')
-    m = MyManager(address=("127.0.0.1", 8888), authkey=b'abracadabra')
-    m.connect()
-    sm = m.sm() #sm equivaut a remote
+    try:
+        MyManager.register('sm') # On appelle le remote du fichier manager
+        m = MyManager(address=("127.0.0.1", 8888), authkey=b'abracadabra')
+        m.connect()
+        sm = m.sm() # sm équivaut a remote
+    except:
+        print("La mémoire partagée n'est pas disponible")
+        sys.exit(1)
+
 
     pid = os.getpid()
     
@@ -286,6 +301,7 @@ if __name__ == "__main__":
         else: # Pas d'offres acceptée, comportement "usuel"
             print_deck(pid, cards)
 
+
         # Gestion de l'input du Player
         print("******************")
         put = input("""Que voulez-vous faire ?\n
@@ -309,8 +325,11 @@ if __name__ == "__main__":
 
             if res[0] :
                 print("\n==> C'est validé\n")
-                # On rajouter l'offre à la mémoire partagée
+                print("ici")
                 sm.acquire_lock()
+                print("ici")
+                
+                # On rajouter l'offre à la mémoire partagée
                 sm.add_offer(pid, res[1])
                 sm.release_lock()
             else:

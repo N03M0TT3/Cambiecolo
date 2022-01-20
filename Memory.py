@@ -5,16 +5,33 @@ from multiprocessing import Lock
 class MyRemoteClass: #Gestion memoire partagee
 
     def __init__(self):
-        self.disponible = {}
         self.offres = {}
         self.lock = Lock()
         self.winner = -1
+        self.points = {}
 
-    def get_disp(self):
-        return self.disponible()
 
-    def set_disp(self,bool, key):
-        self.disponible[key]=bool
+    def add_point(self, pid, carte):
+        if carte == "Chaussure":
+            point = 5
+        elif carte == "Velo":
+            point = 4
+        elif carte == "Train":
+            point = 3
+        elif carte == "Voiture":
+            point = 2
+        elif carte == "Avion":
+            point = 1    
+        self.points[pid] = self.points.get(pid) + point
+
+
+    def del_all_points(self):
+        self.points.clear()
+
+
+    def get_total_winner(self):
+        return max(self.points.keys()),self.points.get(max(self.points.keys())) 
+        
 
     def get_offers(self):
         return self.offres

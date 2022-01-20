@@ -13,6 +13,12 @@ class MyManager(BaseManager): pass
 #KEYS
 key = 350
 
+# Création de la message queue
+mq = sysv_ipc.MessageQueue(key, sysv_ipc.IPC_CREAT)
+
+cards_all = {} # Les cartes de tous les joueurs
+
+
 
 # Handles signals
 def handler(sig, frame):
@@ -20,6 +26,7 @@ def handler(sig, frame):
     if sig == signal.SIGINT:
         # On supprime la message queue et on réinitialise la mémoire partagée
         mq.remove()
+
         sm.acquire_lock()
         sm.del_all_offers()
         sm.set_winner(-1)
@@ -29,19 +36,34 @@ def handler(sig, frame):
 
     # L'un des joueurs a gagné
     if sig == signal.SIGUSR1:
-        # On envoit un signal qui va tuer les processus Player.py
-        for pid in cards_all.keys():
-            os.kill(pid, signal.SIGUSR2)
         print("La partie est finie ! Le joueur", sm.get_winner() , "a gagné !")
 
         # On supprime la message queue et on réinitialise la mémoire partagée
         mq.remove()
         sm.acquire_lock()
         sm.del_all_offers()
+        sm.del_all_points()
         sm.set_winner(-1)
         sm.release_lock()
 
-        sys.exit(1)
+        while True:
+            put = input("Voulez-vous relancer une partie ? (O/n) ")
+            if put.capitalize() == 'O' or put == '':
+                game()
+                break
+            elif put.lower() == 'n':
+                print("Fin du jeu !")
+                print("Le gagnant final est le joueur", sm.get_total_winner()[0], "avec", sm.get_total_winner()[1], "points !" )
+
+                # On envoit un signal qui va tuer les processus Player.py
+                for pid in cards_all.keys():
+                    os.kill(pid, signal.SIGINT)
+
+                sys.exit(1)
+            else:
+                print("Saisie non valide")
+
+
 
 
 # Cette fonction crée les cartes du jeux et vérifie que 5 cartes identiques ne se suivent pas
@@ -74,24 +96,7 @@ def deck(n):
     return deck
 
 
-
-
-if __name__ == "__cards__":
-
-    # Connection au remote manager
-    try:
-        MyManager.register('sm') #On appelle le remote du fichier manager
-        m = MyManager(address=("127.0.0.1", 8888), authkey=b'abracadabra')
-        m.connect()
-        sm = m.sm() #sm equivaut a remote
-    except:
-        print("La mémoire partagée n'est pas disponible")
-        sys.exit(1)
-
-    # Création de la message queue
-    mq = sysv_ipc.MessageQueue(key, sysv_ipc.IPC_CREAT)
-
-
+def game():
     n = input("Combien de joueurs voulez vous dans cette partie ? (3-5)\n")
 
     # Flag
@@ -110,7 +115,7 @@ if __name__ == "__cards__":
     
     # Liste de toutes les cartes du jeu, mélangées
     deck_cards = deck(n) 
-    cards_all = {} # La cards de tous les joueurs
+    
     
     # i = joueur
     i = 0
@@ -133,8 +138,6 @@ if __name__ == "__cards__":
         cards = deck_cards[k:k + 5]
         # Ajout de la liste de cartes au dictionnaire avec comme key le pid du Player
         cards_all[pid] = cards 
-        sm.set_disp(True,pid)
-
 
         msg = f"Bienvenue user {pid} ! Vous etes connecter a la partie, veuillez patienter dans la salle d'attente..."
         msg = msg.encode()
@@ -150,14 +153,33 @@ if __name__ == "__cards__":
         k = k + 5  # Chaque joueur doit avoir 5 cartes qui sont tirées du deck
 
     # On envoie les cartes des joueurs à l'aide de la message queue
-    for pid, list in cards_all.items():
-        cards = (' '.join(list)).encode()
+    for pid, l in cards_all.items():
+        cards = (' '.join(l)).encode()
         mq.send(cards, type=pid)
 
-    
+
+
+if __name__ == "__main__":
+
+    # Connection au remote manager
+    try:
+        MyManager.register('sm') # On appelle le remote du fichier manager
+        m = MyManager(address=("127.0.0.1", 8888), authkey=b'abracadabra')
+        m.connect()
+        sm = m.sm() # sm équivaut a remote
+        sm.set_winner(-1) # Dans le cas d'une fermeture étrange du programme
+    except:
+        print("La mémoire partagée n'est pas disponible")
+        sys.exit(1)
+
 
     
-    
-    signal.signal(signal.SIGUSR1, handler)
     signal.signal(signal.SIGINT, handler)
-    signal.pause()
+    signal.signal(signal.SIGUSR1, handler)
+    
+    
+    game()
+    
+    
+    
+    
