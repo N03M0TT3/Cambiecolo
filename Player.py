@@ -12,18 +12,20 @@ class MyManager(BaseManager): pass
 key = 350
 
 # Vérification des conditions de victoire et envoie du signal au process Game.py
-def bell(pid):
+def bell(pid, cards):
     if cards.count(cards[0]) == 5 : # Si la carte 0 est présente 5 fois dans les cartes du joueur, il a gagné
 
-        sm.acquire_lock()  # on block l'accès à la cloche grâce à un mutex
+        sm.acquire_lock()
         # On écrit son pid dans la mémoire partagée
         sm.set_winner(pid)
         sm.add_point(pid, cards[0])
-        sm.release_lock()  # Releases Lock on bell
+        sm.release_lock()
+
 
         # On envoie le signal SUGUSR1 au processus Game.py
         os.kill(pid_game, signal.SIGUSR1)
         print("Vous avez gagné ! Félicitations !")
+
     else:
         print("Vous n'avez pas les mêmes cartes, attention !")
 
@@ -32,9 +34,12 @@ def bell(pid):
 
 # Handles signals
 def handler(sig, frame):
-    if sig == signal.SIGUSR2 and sm.get_winner() != None:
+    if sig == signal.SIGUSR2 and sm.get_winner() != pid:
         print("Le joueur", sm.get_winner() , "a gagné cette partie !")
-        sys.exit(1)
+        print("Appuyez sur entrer avant d'aller relancer une nouvelle partie")
+
+    if sig == signal.SIGUSR1:
+        play()
 
     if sig == signal.SIGINT:
         print("La partie est terminée")
@@ -112,11 +117,11 @@ def choose_cards(current_cards):
     
 
 def accept_offer(offers, pid, cards):
-    sm.acquire_lock()
+     
     # On stocke temporairement les cartes de l'offre
     temp = sm.get_offers().get(pid)
     sm.del_offer(pid)
-    sm.release_lock()
+      
 
     # Affichage des offres disponible, numérotées de 1 à n max
     see_all_offers(offers, pid)
@@ -139,10 +144,14 @@ def accept_offer(offers, pid, cards):
 
     # Récupération de la clé de l'offre choisie par le Player
     pid_offre = list(offers.keys())[offre - 1]
+    new_cards = offers.get(pid_offre)
     # Nombre de cartes proposées dans cette offre
-    nb_cards = len(offers.get(pid_offre))
+    nb_cards = len(new_cards)
 
-    print("Il faut que vous échangiez", nb_cards , "cartes. Lesquels ?")
+    sm.del_offer(pid_offre)
+    sm.add_offer(-pid_offre+1, new_cards) # Trace de l'envoi
+
+    print(f"\nIl faut que vous échangiez {nb_cards} cartes avec le joueur {pid_offre}. Lesquelles ?")
 
     # On récupére les cartes choisies par le Player
     res = choose_cards(cards)
@@ -161,14 +170,13 @@ def accept_offer(offers, pid, cards):
     if res[0]:  # La sélection du Player est validée
         
         # On rajoute une offre avec comme clé la valeur opposée de la clé de l'offre acceptée et comme valeur les cartes choisies pour être échangées
-        sm.acquire_lock()
+         
         sm.add_offer(-pid_offre, res[1])
-        sm.release_lock()
+          
 
         print("\nLes cartes", res[1], "ont été envoyées")
 
         # On récupère de la mémoire les cartes de l'autre Player
-        new_cards = offers.get(pid_offre)
         print("Les cartes", new_cards, " ont été réceptionnées\n")
 
         # On supprimer de la main du Player les cartes envoyées et on ajoute les nouvelles
@@ -180,16 +188,19 @@ def accept_offer(offers, pid, cards):
         # Le deck est imprimé au début de la boucle du jeu
     else:   # Le joueur n'a pas validé sa sélection
 
+        sm.del_offer(-pid_offre+1) # On enlève l'offre temporaire d'échange
+        sm.add_offer(pid_offre, new_cards) # On réinstaure l'offre
+        if temp != None:
+            # On réinstaure l'offre du Player
+            sm.add_offer(pid, temp)
+
         while True:
 
             p = input("Voulez-vous sortir de l'acceptation d'offre ? (o/N) ")
             if p.capitalize() == 'N' or p == '':
                 accept_offer(offers, pid, cards)
-            elif p.lower() == 'o':
-                sm.acquire_lock()
-                # On réinstaure l'offre d'avant
-                sm.add_offer(pid, temp)
-                sm.release_lock()
+
+            elif p.lower() == 'o': 
                 break
             else:
                 print("Saisie invalide")
@@ -197,18 +208,99 @@ def accept_offer(offers, pid, cards):
 
 # Affichage de toutes les offres
 def see_all_offers(offers, pid):
-    if offers=={}:
-        print("\nPas d'offres pour le moment.")
-    else:
-        print("\nOFFRES :")
 
-        # Compteur pour l'UX
-        i = 0
-        for player in offers.keys():
-            if player >= 0 and player != pid:  # N'affiche pas les réponses aux offres ni l'offre du Player
-                i += 1
-                print(i, "--> Player", player, "propose", len(offers.get(player)), "cartes")
-                print("---------")
+    print("\nOFFRES :")
+
+    # Compteur pour l'UX
+    i = 0
+    for player in offers.keys():
+        if player >= 0 and player != pid:  # N'affiche pas les réponses aux offres ni l'offre du Player
+            i += 1
+            print(i, "--> Player", player, "propose", len(offers.get(player)), "cartes")
+            print("---------")
+
+
+
+def play():
+    
+    # Obtention de la main du client
+    m, _ = mq.receive(type=pid) 
+    cards = (m.decode()).split()
+
+    print()
+    print("\n\n\n\n\nDEBUT DU JEU")
+
+
+    ########### BOUCLE DU JEU ###########
+
+    while sm.get_winner() == -1:
+
+        # Si le Player a vu son offre être acceptée
+        if sm.get_offers().get(-pid) != None:
+            
+            #Récupération des cartes que le Player a envoyé et de celles qu'il a reçu
+            sent = sm.get_offers().get(-pid+1)
+            received = sm.get_offers().get(-pid)
+
+            # Echange des anciennes cartes avec les nouvelles
+            for i in range(len(sent)):
+                cards.pop(cards.index(sent[i]))
+                cards.append(received[i])
+
+            # On peut supprimer les deux offres maintenant que la transaction est terminée
+             
+            sm.del_offer(-pid+1)
+            sm.del_offer(-pid)
+              
+
+            print("Transaction terminée, voici vos cartes :")
+            print_deck(pid, cards)
+
+        else: # Pas d'offres acceptée, comportement "usuel"
+            print_deck(pid, cards)
+
+
+        # Gestion de l'input du Player
+        print("******************")
+        put = input("""Que voulez-vous faire ?\n
+        Afficher vos cartes (C)
+        Afficher les offres (O)
+        Proposer une offre (P)
+        Accepter une offre (A)
+        Sonner la cloche (B)\n""")
+
+        if put.capitalize() == 'C':
+            pass # Les cartes sont affichées en début de la boucle du jeu
+
+        elif put.capitalize() == 'O':
+            see_all_offers(sm.get_offers(), pid) # On affiche toutes les offres de la mémoire
+            print()
+
+        elif put.capitalize() == 'P':
+            print("\nChoisir les cartes à proposer :")
+            # Returne un boolean True si le Player confirme son choix, et les cartes sélectionnées
+            res = choose_cards(cards)  
+
+            if res[0] :
+                print("\n==> C'est validé\n")
+                
+                # On rajouter l'offre à la mémoire partagée
+                sm.add_offer(pid, res[1])
+                  
+            else:
+                print("\n==> Offre annulée...\n")
+            
+        elif put.capitalize() == 'A':
+            accept_offer(sm.get_offers(), pid, cards)
+
+        elif put.capitalize() == 'B': 
+            bell(pid, cards) # Test des conditions de victoire
+
+        elif put == "":
+            print("L'hôte va démarrer une autre partie")
+        
+        else:
+            print("Cette action n'est pas disponible")
 
 
 
@@ -265,85 +357,12 @@ if __name__ == "__main__":
     pid_game = int(m.decode())
 
 
-    # Obtention de la main du client
-    m, _ = mq.receive(type=pid) 
-    cards = (m.decode()).split()
+    play()
 
-    print()
-    print("DEBUT DU JEU")
+    signal.signal(signal.SIGUSR1, handler)
 
-
-    ########### BOUCLE DU JEU ###########
-
-    while sm.get_winner() == -1:
-
-        # Si le Player a vu son offre être acceptée
-        if sm.get_offers().get(-pid) != None:
-            
-            #Récupération des cartes que le Player a envoyé et de celles qu'il a reçu
-            sent = sm.get_offers().get(pid)
-            received = sm.get_offers().get(-pid)
-
-            # Echange des anciennes cartes avec les nouvelles
-            for i in range(len(sent)):
-                cards.pop(cards.index(sent[i]))
-                cards.append(received[i])
-
-            # On peut supprimer les deux offres maintenant que la transaction est terminée
-            sm.acquire_lock()
-            sm.del_offer(pid)
-            sm.del_offer(-pid)
-            sm.release_lock()
-
-            print("Transaction terminée, voici vos cartes :")
-            print_deck(pid, cards)
-
-        else: # Pas d'offres acceptée, comportement "usuel"
-            print_deck(pid, cards)
-
-
-        # Gestion de l'input du Player
-        print("******************")
-        put = input("""Que voulez-vous faire ?\n
-        Afficher vos cartes (C)
-        Afficher les offres (O)
-        Proposer une offre (P)
-        Accepter une offre (A)
-        Sonner la cloche (B)\n""")
-
-        if put.capitalize() == 'C':
-            pass # Les cartes sont affichées en début de la boucle du jeu
-
-        elif put.capitalize() == 'O':
-            see_all_offers(sm.get_offers(), pid) # On affiche toutes les offres de la mémoire
-            print()
-
-        elif put.capitalize() == 'P':
-            print("\nChoisir les cartes à proposer :")
-            # Returne un boolean True si le Player confirme son choix, et les cartes sélectionnées
-            res = choose_cards(cards)  
-
-            if res[0] :
-                print("\n==> C'est validé\n")
-                print("ici")
-                sm.acquire_lock()
-                print("ici")
-                
-                # On rajouter l'offre à la mémoire partagée
-                sm.add_offer(pid, res[1])
-                sm.release_lock()
-            else:
-                print("\n==> Offre annulée...\n")
-            
-        elif put.capitalize() == 'A':
-            accept_offer(sm.get_offers(), pid, cards)
-
-        elif put.capitalize() == 'B': 
-            bell(pid) # Test des conditions de victoire
-
-        else:
-            print("Cette action n'est pas disponible")
-
+    while True:
+        signal.pause()
         
 
 

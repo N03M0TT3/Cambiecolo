@@ -22,15 +22,26 @@ class MyRemoteClass: #Gestion memoire partagee
             point = 2
         elif carte == "Avion":
             point = 1    
-        self.points[pid] = self.points.get(pid) + point
+        if self.points.get(pid) != None:
+            self.points[pid] = self.points.get(pid) + point
+        else:
+            self.points[pid] = point
 
+
+    def get_points(self):
+        return self.points
 
     def del_all_points(self):
         self.points.clear()
 
 
     def get_total_winner(self):
-        return max(self.points.keys()),self.points.get(max(self.points.keys())) 
+        score_max = max(self.points.values())
+        for joueur, score in self.points.items():
+            if score == score_max:
+                gagnant = joueur
+
+        return gagnant, score_max
         
 
     def get_offers(self):

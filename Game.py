@@ -27,10 +27,10 @@ def handler(sig, frame):
         # On supprime la message queue et on réinitialise la mémoire partagée
         mq.remove()
 
-        sm.acquire_lock()
+          
         sm.del_all_offers()
         sm.set_winner(-1)
-        sm.release_lock()
+          
 
         sys.exit(0)
 
@@ -38,30 +38,11 @@ def handler(sig, frame):
     if sig == signal.SIGUSR1:
         print("La partie est finie ! Le joueur", sm.get_winner() , "a gagné !")
 
-        # On supprime la message queue et on réinitialise la mémoire partagée
-        mq.remove()
-        sm.acquire_lock()
+        for pid in cards_all.keys():
+            os.kill(pid, signal.SIGUSR2)
+          
         sm.del_all_offers()
-        sm.del_all_points()
-        sm.set_winner(-1)
-        sm.release_lock()
-
-        while True:
-            put = input("Voulez-vous relancer une partie ? (O/n) ")
-            if put.capitalize() == 'O' or put == '':
-                game()
-                break
-            elif put.lower() == 'n':
-                print("Fin du jeu !")
-                print("Le gagnant final est le joueur", sm.get_total_winner()[0], "avec", sm.get_total_winner()[1], "points !" )
-
-                # On envoit un signal qui va tuer les processus Player.py
-                for pid in cards_all.keys():
-                    os.kill(pid, signal.SIGINT)
-
-                sys.exit(1)
-            else:
-                print("Saisie non valide")
+          
 
 
 
@@ -97,6 +78,46 @@ def deck(n):
 
 
 def game():
+
+    random.shuffle(deck_cards)
+    k = 0
+    for pid in cards_all.keys():
+        # On stocke 5 cartes dans la variable cards
+        cards = deck_cards[k:k + 5]
+        # Ajout de la liste de cartes au dictionnaire avec comme key le pid du Player
+        cards_all[pid] = cards
+        k += 5
+
+
+    # On envoie les cartes des joueurs à l'aide de la message queue
+    for pid, l in cards_all.items():
+        cards = (' '.join(l)).encode()
+        mq.send(cards, type=pid)
+
+    signal.pause()
+
+
+
+if __name__ == "__main__":
+
+    # Connection au remote manager
+    try:
+        MyManager.register('sm') # On appelle le remote du fichier manager
+        m = MyManager(address=("127.0.0.1", 8888), authkey=b'abracadabra')
+        m.connect()
+        sm = m.sm() # sm équivaut a remote
+        # Dans le cas d'une fermeture étrange du programme
+        sm.set_winner(-1) 
+        sm.del_all_offers()
+    except:
+        print("La mémoire partagée n'est pas disponible")
+        sys.exit(1)
+
+
+    
+    signal.signal(signal.SIGINT, handler)
+    signal.signal(signal.SIGUSR1, handler)
+
     n = input("Combien de joueurs voulez vous dans cette partie ? (3-5)\n")
 
     # Flag
@@ -110,9 +131,8 @@ def game():
             valid = True
         except ValueError:
             n = input("Entrez un entier entre 3 et 5 : ")
-    
-    
-    
+
+
     # Liste de toutes les cartes du jeu, mélangées
     deck_cards = deck(n) 
     
@@ -151,35 +171,42 @@ def game():
 
         i = i + 1
         k = k + 5  # Chaque joueur doit avoir 5 cartes qui sont tirées du deck
-
-    # On envoie les cartes des joueurs à l'aide de la message queue
-    for pid, l in cards_all.items():
-        cards = (' '.join(l)).encode()
-        mq.send(cards, type=pid)
-
-
-
-if __name__ == "__main__":
-
-    # Connection au remote manager
-    try:
-        MyManager.register('sm') # On appelle le remote du fichier manager
-        m = MyManager(address=("127.0.0.1", 8888), authkey=b'abracadabra')
-        m.connect()
-        sm = m.sm() # sm équivaut a remote
-        sm.set_winner(-1) # Dans le cas d'une fermeture étrange du programme
-    except:
-        print("La mémoire partagée n'est pas disponible")
-        sys.exit(1)
-
-
-    
-    signal.signal(signal.SIGINT, handler)
-    signal.signal(signal.SIGUSR1, handler)
-    
     
     game()
     
-    
-    
-    
+    while True:
+        put = input("Voulez-vous relancer une partie ? (O/n) ")
+        if put.capitalize() == 'O' or put == '':
+            # Le gagnant ne sera pas le même + boucle Player.py
+            sm.set_winner(-1)
+
+            try:
+                # On envoit un signal qui va relancer les processus Player.py
+                for pid in cards_all.keys():
+                    os.kill(pid, signal.SIGUSR1) # Signal "ON REJOUE"
+            except:
+                print("L'un des joueurs est mort")
+                sys.exit(2)
+
+            game()
+
+        elif put.lower() == 'n':
+            sm.set_winner(-1)
+            print("Fin du jeu !")
+            print("Le gagnant final est le joueur", sm.get_total_winner()[0], "avec", sm.get_total_winner()[1], "points !\n-----" )
+            for joueur, score in sm.get_points().items():
+                print(f"--> Joueur {joueur} a obtenu {score} points !")
+
+            try:
+                # On envoit un signal qui va tuer les processus Player.py
+                for pid in cards_all.keys():
+                    os.kill(pid, signal.SIGINT)
+            except:
+                print("L'un des joueurs est mort")
+                sys.exit(2)
+            
+            sm.del_all_points()
+            mq.remove()
+            sys.exit(1)
+        else:
+            print("Saisie non valide")
