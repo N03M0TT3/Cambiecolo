@@ -42,8 +42,15 @@ def handler(sig, frame):
         play()
 
     if sig == signal.SIGINT:
+        try:
+            os.kill(pid_game, signal.SIGINT)
+            print("Vous avez interrompu la partie")
+        except ProcessLookupError:
+            sys.exit(1)
+
+    if sig == signal.SIGTERM:
         print("La partie est terminée")
-        sys.exit(1)
+        sys.exit(0)
 
 
 # Imprime la main courante du joueur
@@ -116,6 +123,7 @@ def choose_cards(current_cards):
     return valid, cards
     
 
+# Accepter une offre proposée par un autre joueur
 def accept_offer(offers, pid, cards):
      
     # On stocke temporairement les cartes de l'offre
@@ -126,45 +134,48 @@ def accept_offer(offers, pid, cards):
     # Affichage des offres disponible, numérotées de 1 à n max
     see_all_offers(offers, pid)
 
-    # Flag
-    valid = False
-    while not valid:
+    if offers == {}:
+        print("\nIl n'y a pas d'offre pour le moment")
+    else:
+        # Flag
+        valid = False
+        while not valid:
 
-        try:
-            offre = int(input("\nEntrez le numéro de l'offre que vous souhaitez accepter : "))
-            if offre < 1:
-                print("Les numéros des offres commencent à 1")
-            elif offre > len(offers):
-                print("Ceci est trop grand")
+            try:
+                offre = int(input("\nEntrez le numéro de l'offre que vous souhaitez accepter : "))
+                if offre < 1:
+                    print("Les numéros des offres commencent à 1")
+                elif offre > len(offers):
+                    print("Ceci est trop grand")
+                else:
+                    valid = True
+            
+            except ValueError:
+                print("Merci d'entrer un chiffre")
+
+        # Récupération de la clé de l'offre choisie par le Player
+        pid_offre = list(offers.keys())[offre - 1]
+        new_cards = offers.get(pid_offre)
+        # Nombre de cartes proposées dans cette offre
+        nb_cards = len(new_cards)
+
+        sm.del_offer(pid_offre)
+        sm.add_offer(-pid_offre+1, new_cards) # Trace de l'envoi
+
+        print(f"\nIl faut que vous échangiez {nb_cards} cartes avec le joueur {pid_offre}. Lesquelles ?")
+
+        # On récupére les cartes choisies par le Player
+        res = choose_cards(cards)
+
+        # Flag
+        nb_valid = False
+        while not nb_valid:
+
+            if len(res[1]) != nb_cards:
+                print("\nVous avez sélectionné un nombre incorrect de cartes !\nRecommencez en sélectionant", nb_cards, "cartes : ")
+                res = choose_cards(cards)
             else:
-                valid = True
-        
-        except ValueError:
-            print("Merci d'entrer un chiffre")
-
-    # Récupération de la clé de l'offre choisie par le Player
-    pid_offre = list(offers.keys())[offre - 1]
-    new_cards = offers.get(pid_offre)
-    # Nombre de cartes proposées dans cette offre
-    nb_cards = len(new_cards)
-
-    sm.del_offer(pid_offre)
-    sm.add_offer(-pid_offre+1, new_cards) # Trace de l'envoi
-
-    print(f"\nIl faut que vous échangiez {nb_cards} cartes avec le joueur {pid_offre}. Lesquelles ?")
-
-    # On récupére les cartes choisies par le Player
-    res = choose_cards(cards)
-
-    # Flag
-    nb_valid = False
-    while not nb_valid:
-
-        if len(res[1]) != nb_cards:
-            print("\nVous avez sélectionné un nombre incorrect de cartes !\nRecommencez en sélectionant", nb_cards, "cartes : ")
-            res = choose_cards(cards)
-        else:
-            nb_valid = True
+                nb_valid = True
 
 
     if res[0]:  # La sélection du Player est validée
@@ -350,12 +361,19 @@ if __name__ == "__main__":
 
     m, _ = mq.receive(type=pid)
     m = m.decode()
-    print(m) # Message de de bonne connexion avec Game
+    print(m) # Message de de bonne connexion ou de rejet
+
+    if m == "La partie est pleine":
+        sys.exit(100)
+
+
+    signal.signal(signal.SIGTERM, handler)
 
     # Récupération du pid du serveur
     m, _ = mq.receive(type=pid)
     pid_game = int(m.decode())
 
+    
 
     play()
 

@@ -1,11 +1,12 @@
 from multiprocessing.managers import BaseManager
 from itertools import groupby
 import random
+import time
 import sysv_ipc
 import signal
 import os
 import sys
-
+import threading
 
 class MyManager(BaseManager): pass
 
@@ -24,15 +25,20 @@ cards_all = {} # Les cartes de tous les joueurs
 def handler(sig, frame):
     # Interruption du programme par Ctrl+C
     if sig == signal.SIGINT:
+        print("\nLa partie est terminée")
         # On supprime la message queue et on réinitialise la mémoire partagée
+        for pid in cards_all.keys():
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except:
+                print("Un joueur est mort")
+
         mq.remove()
 
-          
         sm.del_all_offers()
         sm.set_winner(-1)
-          
 
-        sys.exit(0)
+        sys.exit(1)
 
     # L'un des joueurs a gagné
     if sig == signal.SIGUSR1:
@@ -44,6 +50,20 @@ def handler(sig, frame):
         sm.del_all_offers()
           
 
+# Rejette les joueurs supplémentaires
+def full():
+    while True:
+        try:
+            pid, _ = mq.receive(type=1)
+            pid = int(pid.decode())
+
+            message = "La partie est pleine"
+            mq.send(message.encode(), type=pid)
+            time.sleep(5)
+            break
+        except sysv_ipc.ExistentialError:
+            print("Partie terminée")
+            break
 
 
 
@@ -113,10 +133,11 @@ if __name__ == "__main__":
         print("La mémoire partagée n'est pas disponible")
         sys.exit(1)
 
-
     
     signal.signal(signal.SIGINT, handler)
     signal.signal(signal.SIGUSR1, handler)
+
+    thread = threading.Thread(target=full)
 
     n = input("Combien de joueurs voulez vous dans cette partie ? (3-5)\n")
 
@@ -172,9 +193,12 @@ if __name__ == "__main__":
         i = i + 1
         k = k + 5  # Chaque joueur doit avoir 5 cartes qui sont tirées du deck
     
-    game()
     
-    while True:
+    thread.start()
+    
+    game() # Lancement de la partie
+    
+    while True: # Relancer des parties
         put = input("Voulez-vous relancer une partie ? (O/n) ")
         if put.capitalize() == 'O' or put == '':
             # Le gagnant ne sera pas le même + boucle Player.py
@@ -200,7 +224,7 @@ if __name__ == "__main__":
             try:
                 # On envoit un signal qui va tuer les processus Player.py
                 for pid in cards_all.keys():
-                    os.kill(pid, signal.SIGINT)
+                    os.kill(pid, signal.SIGTERM)
             except:
                 print("L'un des joueurs est mort")
                 sys.exit(2)
